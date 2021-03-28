@@ -1,12 +1,10 @@
 import * as ls from 'vscode-languageserver'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 
-import * as unist from 'unist'
+import unist from 'unist'
 import * as vfile from 'vfile'
-import * as visit from 'unist-util-visit'
+import visit from 'unist-util-visit'
 import * as y from 'yaml-language-server-parser'
-
-const a: number = 2
 
 export default class DB {
   properties: Map<string, string>
@@ -16,7 +14,7 @@ export default class DB {
   constructor({
     properties = new Map(),
     spaces = new Map(),
-    sendDiagnostics
+    sendDiagnostics,
   }: {
     properties?: Map<string, string>
     spaces?: Map<string, string>
@@ -28,13 +26,18 @@ export default class DB {
   }
 
   hover({ position }: ls.HoverParams) {
-    const self = this
-
     return (tree: unist.Node, file: vfile.VFile) => {
       const path = file.path
-      if (!path) { return }
+      if (!path) {
+        return
+      }
 
-      const doc = TextDocument.create(path, 'markdown', 0, file.contents.toString())
+      const doc = TextDocument.create(
+        path,
+        'markdown',
+        0,
+        file.contents.toString(),
+      )
 
       const node = focus(tree, doc, position)
       console.log(node)
@@ -42,43 +45,56 @@ export default class DB {
   }
 
   inspect() {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
 
     return (tree: unist.Node, file: vfile.VFile) => {
       const diagnostics: ls.Diagnostic[] = []
 
       const path = file.path
-      if (!path) { return }
+      if (!path) {
+        return
+      }
 
-      const doc = TextDocument.create(path, 'markdown', 0, file.contents.toString())
+      const doc = TextDocument.create(
+        path,
+        'markdown',
+        0,
+        file.contents.toString(),
+      )
 
       const classification = classify(path)
-      if (!classification) { return } // TODO: diagnostic for entire file?
+      if (!classification) {
+        return
+      } // TODO: diagnostic for entire file?
 
       const { kind, uid } = classification
 
-
       visit(tree, 'yaml', node => {
-        if (!('value' in node) || typeof node.value !== 'string') { return }
-
-        const nodeStart = node.position?.start
-        const nodeOffset = nodeStart ? doc.offsetAt(ls.Position.create(nodeStart.line, nodeStart.column - 1)) : 0
-
-        function warn(n: y.YAMLNode, message: string) {
-          diagnostics.push(
-            {
-              severity: ls.DiagnosticSeverity.Warning,
-              range: {
-                start: doc.positionAt(n.startPosition + nodeOffset),
-                end: doc.positionAt(n.endPosition + nodeOffset)
-              },
-              message
-            }
-          )
+        if (!('value' in node) || typeof node.value !== 'string') {
+          return
         }
 
-        const loaded: y.YAMLNode = y.safeLoad(node.value);
-        (loaded as y.YamlMap).mappings.forEach(mapping => {
+        const nodeStart = node.position?.start
+        const nodeOffset = nodeStart
+          ? doc.offsetAt(
+              ls.Position.create(nodeStart.line, nodeStart.column - 1),
+            )
+          : 0
+
+        function warn(n: y.YAMLNode, message: string) {
+          diagnostics.push({
+            severity: ls.DiagnosticSeverity.Warning,
+            range: {
+              start: doc.positionAt(n.startPosition + nodeOffset),
+              end: doc.positionAt(n.endPosition + nodeOffset),
+            },
+            message,
+          })
+        }
+
+        const loaded: y.YAMLNode = y.safeLoad(node.value)
+        ;(loaded as y.YamlMap).mappings.forEach(mapping => {
           const { key, value } = mapping
 
           const k: string = (key as y.YAMLScalar).value
@@ -124,9 +140,8 @@ export default class DB {
   }
 }
 
-function reify(
-  node: y.YAMLNode
-): any {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function reify(node: y.YAMLNode): any {
   switch (node.kind) {
     case y.Kind.SEQ:
       const seq = node as y.YAMLSequence
@@ -134,7 +149,7 @@ function reify(
     case y.Kind.MAP:
       const map = node as y.YamlMap
       return new Map(
-        map.mappings.map(value => [reify(value.key), reify(value.value)])
+        map.mappings.map(value => [reify(value.key), reify(value.value)]),
       )
     case y.Kind.SCALAR:
       return (node as y.YAMLScalar).value
@@ -143,11 +158,11 @@ function reify(
 
 function formulaKeys(
   node: y.YAMLNode,
-  cb: (node: y.YAMLNode, value: string) => void
+  cb: (node: y.YAMLNode, value: string) => void,
 ) {
   let queue = [node]
   let target: y.YAMLNode | undefined
-  while (target = queue.shift()) {
+  while ((target = queue.shift())) {
     switch (target.kind) {
       case y.Kind.SEQ:
         const seq = target as y.YAMLSequence
@@ -161,7 +176,7 @@ function formulaKeys(
         const mapping = target as y.YAMLMapping
         if (mapping.key.kind === y.Kind.SCALAR) {
           const k = (mapping.key as y.YAMLScalar).value
-          if (typeof (k) === 'string' && k !== 'and' && k !== 'or') {
+          if (typeof k === 'string' && k !== 'and' && k !== 'or') {
             cb(mapping.key, k)
           }
         }
@@ -197,9 +212,13 @@ function focus(tree: unist.Node, doc: TextDocument, position: ls.Position) {
     if ('children' in current) {
       const child = (current.children as unist.Node[]).find(c => {
         console.log(JSON.stringify(c, null, 2))
-        if (!c.position) { return false }
+        if (!c.position?.start?.offset || !c.position?.end?.offset) {
+          return false
+        }
 
-        return c.position.start.offset! <= offset && offset <= c.position.end.offset!
+        return (
+          c.position.start.offset <= offset && offset <= c.position.end.offset
+        )
       })
 
       if (child) {

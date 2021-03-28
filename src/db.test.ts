@@ -1,5 +1,11 @@
-import { expect } from 'chai'
+import DB from './db'
 
-it('runs', () => {
-  expect(1 + 1).to.eq(2)
+describe('DB', () => {
+  it('can initialize without error', () => {
+    const db = new DB({
+      sendDiagnostics: () => {},
+    })
+
+    expect(db).toBeInstanceOf(DB)
+  })
 })

@@ -1,10 +1,10 @@
 import * as ls from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
 
-import * as unified from 'unified'
+import unified from 'unified'
 import * as parse from 'remark-parse'
 import * as frontmatter from 'remark-frontmatter'
-import * as vfile from 'vfile'
+import vfile from 'vfile'
 import * as stringify from 'remark-stringify'
 
 import DB from './db'
@@ -12,20 +12,22 @@ import DB from './db'
 const connection = ls.createConnection(ls.ProposedFeatures.all)
 const documents = new ls.TextDocuments(TextDocument)
 
-connection.onInitialize((_: ls.InitializeParams): ls.InitializeResult => {
-  return {
-    capabilities: {
-      textDocumentSync: ls.TextDocumentSyncKind.Incremental,
-      hoverProvider: true
+connection.onInitialize(
+  (): ls.InitializeResult => {
+    return {
+      capabilities: {
+        textDocumentSync: ls.TextDocumentSyncKind.Incremental,
+        hoverProvider: true,
+      },
     }
-  }
-})
+  },
+)
 
-const spaces: Map<string, string> = new Map()
-const properties: Map<string, string> = new Map()
+// const spaces: Map<string, string> = new Map()
+// const properties: Map<string, string> = new Map()
 
 const db = new DB({
-  sendDiagnostics: connection.sendDiagnostics
+  sendDiagnostics: connection.sendDiagnostics,
 })
 
 const processor = unified()
@@ -34,12 +36,17 @@ const processor = unified()
   .use(() => db.inspect())
   .use(stringify)
 
-connection.onNotification('file', ({ path, body }: { path: string, body: string }) => {
-  processor.process(vfile({ path, contents: body }))
-})
+connection.onNotification(
+  'file',
+  ({ path, body }: { path: string; body: string }) => {
+    processor.process(vfile({ path, contents: body }))
+  },
+)
 
 documents.onDidChangeContent(change => {
-  processor.process(vfile({ path: change.document.uri, contents: change.document.getText() }))
+  processor.process(
+    vfile({ path: change.document.uri, contents: change.document.getText() }),
+  )
 })
 
 connection.onHover((params: ls.HoverParams): ls.Hover | null => {
@@ -60,7 +67,6 @@ connection.onHover((params: ls.HoverParams): ls.Hover | null => {
     .use(stringify)
     .process(vfile({ path, contents }))
 
-
   if (params.position.line !== 2) {
     return null
   }
@@ -72,8 +78,8 @@ connection.onHover((params: ls.HoverParams): ls.Hover | null => {
     },
     contents: {
       kind: 'plaintext',
-      value: 'Discrete topology on a two-point set'
-    }
+      value: 'Discrete topology on a two-point set',
+    },
   }
 })
 
