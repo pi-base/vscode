@@ -6,6 +6,8 @@ import * as vfile from 'vfile'
 import * as visit from 'unist-util-visit'
 import * as y from 'yaml-language-server-parser'
 
+const a: number = 2
+
 export default class DB {
   properties: Map<string, string>
   spaces: Map<string, string>

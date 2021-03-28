@@ -1,12 +1,13 @@
-import * as ls from 'vscode-languageserver'
+import * as ls from 'vscode-languageserver/node'
 import { TextDocument } from 'vscode-languageserver-textdocument'
-import DB from './db'
 
 import * as unified from 'unified'
 import * as parse from 'remark-parse'
 import * as frontmatter from 'remark-frontmatter'
 import * as vfile from 'vfile'
 import * as stringify from 'remark-stringify'
+
+import DB from './db'
 
 const connection = ls.createConnection(ls.ProposedFeatures.all)
 const documents = new ls.TextDocuments(TextDocument)
@@ -33,7 +34,7 @@ const processor = unified()
   .use(() => db.inspect())
   .use(stringify)
 
-connection.onNotification('file', ({ path, body }) => {
+connection.onNotification('file', ({ path, body }: { path: string, body: string }) => {
   processor.process(vfile({ path, contents: body }))
 })
 
